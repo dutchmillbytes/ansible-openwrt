@@ -7,6 +7,15 @@
 - name: Configure device section
   ansible.builtin.include_tasks: device.yml
   loop: "{{ network_devices | default([]) }}"
+  loop_control:
+    extended: true
+    
+# Configure bridge vlan section
+- name: Configure bridge vlan section
+  ansible.builtin.include_tasks: bridge-vlan.yml
+  loop: "{{ bridge_vlans | default([]) }}"
+  loop_control:
+    extended: true
 
 # Configure interface section
 - name: Configure interface section

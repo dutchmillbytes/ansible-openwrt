@@ -1,4 +1,7 @@
 ---
+# Default mesh status
+mesh_enabled: false
+
 # device section
 wireless_devices:
   - id: ""
@@ -30,3 +33,8 @@ wireless_interfaces:
     mobility_domain: ""
     ft_over_ds: ""
     ft_psk_generate_local: ""
+    mesh_fwding: ""
+    mesh_rssi_threshold: ""
+    mesh_gate_announcements: ""
+    mesh_hwmp_rootmode: ""
+    mesh_max_peer_links: ""

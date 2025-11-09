@@ -15,6 +15,13 @@ network_devices:
     igmp_snooping: ""
     ipv6: ""
 
+# bridge vlans
+bridge_vlans:
+  - state: ""
+    vlan: ""
+    device: ""
+    ports: []
+
 # interface section
 network_interfaces:
   - id: ""

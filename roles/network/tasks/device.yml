@@ -1,16 +1,16 @@
 ---
 # Set state status for network device
-- name: Set state status for network device {{ item.id | default('@device[-1]') }}
+- name: Set state status for network device {{ item.id | default('@device[' ~ ansible_loop.index0 ~ ']') }}
   ansible.builtin.set_fact:
     network_device_state: "{{ item.state | default('present') }}"
 
 # Delete network device
-- name: Delete network device {{ item.id }}
+- name: Delete network device {{ item.id | default('@device[' ~ ansible_loop.index0 ~ ']') }}
   when: "'absent' in network_device_state"
   uci:
     command: "absent"
     config: "network"
-    section: "{{ item.id }}"
+    section: "{{ item.id | default('@device[' ~ ansible_loop.index0 ~ ']') }}"
     type: "device"
 
 # Create and configure network device
@@ -18,25 +18,30 @@
   when: "'present' in network_device_state"
   block:
     # Create network device
-    - name: Create network device {{ item.id | default('@device[-1]') }}
+    - name: Create network device {{ item.id | default('@device[' ~ ansible_loop.index0 ~ ']') }}
       uci:
         command: "add"
         config: "network"
-        section: "{{ item.id | default('@device[-1]') }}"
+        section: "{{ item.id | default('@device[' ~ ansible_loop.index0 ~ ']') }}"
         type: "device"
 
     # Configure network device
-    - name: Configure network device {{ item.id | default('@device[-1]') }}
+    - name: Configure network device {{ item.id | default('@device[' ~ ansible_loop.index0 ~ ']') }}
       uci:
         command: "set"
         config: "network"
-        section: "{{ item.id | default('@device[-1]') }}"
+        section: "{{ item.id | default('@device[' ~ ansible_loop.index0 ~ ']') }}"
         type: "device"
         value:
           name: "{{ item.name | default(omit) }}"
           type: "{{ item.type | default(omit) }}"
           ports: "{{ item.ports | default([]) | join(' ') }}"
           stp: "{{ item.stp | default(omit) }}"
-          vlan: "{{ item.vlan | default(omit) }}"
+          vid: "{{ item.vid | default(omit) }}"
           igmp_snooping: "{{ item.igmp_snooping | default(omit) }}"
           ipv6: "{{ item.ipv6 | default(omit) }}"
+          arp_accept: "{{ item.arp_accept | default(omit) }}"
+          ifname: "{{ item.ifname | default(omit) }}"
+          rxpause: "{{ item.rxpause | default(omit) }}"
+          txpause: "{{ item.txpause | default(omit) }}"
+          autoneg: "{{ item.autoneg | default(omit) }}"

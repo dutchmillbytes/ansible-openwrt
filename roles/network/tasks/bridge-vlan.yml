@@ -1,0 +1,39 @@
+---
+# Set state status for bridge-vlans
+- name: Set state status for bridge-vlan {{ item.id | default('@bridge-vlan[' ~ ansible_loop.index0 ~ ']') }}
+  ansible.builtin.set_fact:
+    network_bridge_vlan_state: "{{ item.state | default('present') }}"
+
+# Delete bridge-vlan
+- name: Delete bridge-vlan {{ item.id | default('@bridge-vlan[' ~ ansible_loop.index0 ~ ']') }}
+  when: "'absent' in network_bridge_vlan_state"
+  uci:
+    command: "absent"
+    config: "network"
+    section: "{{ item.id | default('@bridge-vlan[' ~ ansible_loop.index0 ~ ']') }}"
+    type: "bridge-vlan"
+
+# Create and configure bridge-vlan
+- name: Create and configure bridge-vlan
+  when: "'present' in network_bridge_vlan_state"
+  block:
+    # Create bridge-vlan
+    - name: Create bridge-vlan {{ item.id | default('@bridge-vlan[' ~ ansible_loop.index0 ~ ']') }}
+      uci:
+        command: "add"
+        config: "network"
+        section: "{{ item.id | default('@bridge-vlan[' ~ ansible_loop.index0 ~ ']') }}"
+        type: "bridge-vlan"
+
+    # Configure bridge-vlan
+    - name: Configure bridge-vlan {{ item.id | default('@bridge-vlan[' ~ ansible_loop.index0 ~ ']') }}
+      uci:
+        command: "set"
+        config: "network"
+        section: "{{ item.id | default('@bridge-vlan[' ~ ansible_loop.index0 ~ ']') }}"
+        type: "bridge-vlan"
+        value:
+          device: "{{ item.device | default(omit) }}"
+          vlan: "{{ item.vlan | default(omit) }}"
+          ports: "{{ item.ports | default([]) | join(' ') }}"
+          
