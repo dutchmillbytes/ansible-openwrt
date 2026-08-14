@@ -1,0 +1,16 @@
+---
+# Install root CAs
+- name: Install root CA
+  ansible.builtin.include_tasks: cert.yml
+  loop: "{{ ca_trust_certs | default([]) }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed') }}"
+
+# Verify the chain actually validates.
+# Skipped under --check: nothing was actually installed, so a device that does
+# not already trust the CA would fail the assertion for the wrong reason.
+- name: Verify trust
+  ansible.builtin.include_tasks: verify.yml
+  when:
+    - ca_trust_verify_url | default('') | length > 0
+    - not ansible_check_mode

@@ -1,0 +1,25 @@
+---
+# Root CAs to install into the device trust store.
+#
+# Empty by default, so including this role without configuring it is a no-op.
+# Certificate content is passed in rather than shipped in this role's files/
+# directory -- a private CA is site data, and a role that ships a placeholder
+# file is one upgrade away from overwriting something real.
+#
+# ca_trust_certs:
+#   - name: "example-root"
+#     content: "{{ lookup('file', 'files/example-root.crt') }}"
+ca_trust_certs: []
+
+# Directory the individual certificate files are written to. Each becomes
+# <ca_trust_dir>/<name>.crt and is the source of truth for the bundle below.
+ca_trust_dir: "/etc/ssl/certs"
+
+# The system trust bundle. OpenWrt's `ca-bundle` package ships a single
+# concatenated file rather than a hash-symlink directory (/etc/ssl/cert.pem is
+# a symlink to it), so trusting a new root means appending to this file.
+ca_trust_bundle: "/etc/ssl/certs/ca-certificates.crt"
+
+# Optional: an https:// URL to fetch after installation to prove the chain
+# validates. Left empty, the verification step is skipped.
+ca_trust_verify_url: ""

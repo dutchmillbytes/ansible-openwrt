@@ -1,0 +1,35 @@
+---
+# Idempotency marker: the first base64 body line of the certificate. Unique per
+# certificate, and greppable without openssl -- which is not installed on every
+# OpenWrt device (the Deco M5 APs have no openssl binary, only the router does).
+- name: Derive trust marker for {{ item.name }}
+  ansible.builtin.set_fact:
+    ca_trust_marker: "{{ item.content.splitlines()[1] }}"
+
+- name: Install root CA {{ item.name }}
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "{{ ca_trust_dir }}/{{ item.name }}.crt"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+
+# The bundle is owned by the `ca-bundle` package and is replaced wholesale when
+# that package is upgraded, silently dropping any root appended here. Rather
+# than fight that, re-append whenever the marker is missing, so an ordinary
+# playbook run repairs it. Do not template the whole bundle instead -- it is
+# ~224 KB of upstream roots this role has no business owning.
+- name: Check whether {{ item.name }} is already trusted
+  ansible.builtin.command:
+    cmd: "grep -qF {{ ca_trust_marker | quote }} {{ ca_trust_bundle }}"
+  register: ca_trust_check
+  failed_when: false
+  changed_when: false
+  # Read-only, and must run in check mode too -- otherwise it is skipped, the
+  # register is empty, and the conditional below fails on a missing `rc`.
+  check_mode: false
+
+- name: Append {{ item.name }} to the system trust bundle
+  ansible.builtin.command:
+    cmd: "/bin/sh -c 'cat {{ ca_trust_dir }}/{{ item.name }}.crt >> {{ ca_trust_bundle }}'"
+  when: ca_trust_check.rc | default(1) != 0

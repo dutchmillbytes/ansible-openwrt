@@ -1,0 +1,19 @@
+---
+# No --no-check-certificate: this only succeeds if the device genuinely trusts
+# the chain, which is the whole point of the role.
+- name: Fetch {{ ca_trust_verify_url }} to prove the chain validates
+  ansible.builtin.command:
+    cmd: "wget -q -T 8 -O /dev/null {{ ca_trust_verify_url }}"
+  register: ca_trust_verify
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Assert the CA is trusted
+  ansible.builtin.assert:
+    that: ca_trust_verify.rc | default(1) == 0
+    success_msg: "{{ ca_trust_verify_url }} validated against the installed root CA"
+    fail_msg: >-
+      Root CA installed, but {{ ca_trust_verify_url }} still fails verification
+      (rc={{ ca_trust_verify.rc }}). Check that the CA is reachable and that the
+      chain it presents terminates at one of the installed roots.
