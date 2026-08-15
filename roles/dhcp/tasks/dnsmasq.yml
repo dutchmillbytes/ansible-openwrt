@@ -26,9 +26,15 @@
       readethers: "{{ dhcp_common.readethers | default(omit) }}"
       rebind_protection: "{{ dhcp_common.rebind_protection | default(omit) }}"
       rebind_localhost: "{{ dhcp_common.rebind_localhost | default(omit) }}"
-      rebind_domain: "{{ dhcp_common.rebind_domain | default([]) | join(' ') }}"
-      resolvfile: "{{ dhcp_common.resolvfile | default([]) | join(' ') }}"
-      server: "{{ dhcp_common.server | default([]) | join(' ') }}"
+      # These four are UCI *lists*, not options. Pass the list through rather
+      # than joining it: the uci module writes an array as a real `list`, and
+      # OpenWrt's dnsmasq init reads them with config_list_foreach, which
+      # silently ignores an `option`. Joining produced
+      # `option rebind_domain '/example/'`, which never reached dnsmasq at all.
+      rebind_domain: "{{ dhcp_common.rebind_domain | default(omit) }}"
+      server: "{{ dhcp_common.server | default(omit) }}"
+      address: "{{ dhcp_common.address | default(omit) }}"
       serverlist: "{{ dhcp_common.serverlist | default(omit) }}"
-      address: "{{ dhcp_common.address | default([]) | join(' ') }}"
+      # resolvfile is a plain option; joining it split a string per character.
+      resolvfile: "{{ dhcp_common.resolvfile | default(omit) }}"
       allservers: "{{ dhcp_common.allservers | default(omit) }}"

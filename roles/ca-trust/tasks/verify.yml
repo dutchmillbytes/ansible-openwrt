@@ -8,6 +8,13 @@
   failed_when: false
   changed_when: false
   check_mode: false
+  # Retried because this often runs moments after a dnsmasq restart. A device
+  # whose resolver has just been bounced needs a few seconds before names
+  # resolve again, and a single attempt reports a trust failure that is really
+  # a DNS timing race.
+  retries: 5
+  delay: 3
+  until: ca_trust_verify.rc == 0
 
 - name: Assert the CA is trusted
   ansible.builtin.assert:
