@@ -70,8 +70,8 @@ OpenWRT `acme` configuration
   works in the background — hence `acme_issue_now` and its wait loop.
 - Renewal scheduling is handled by the package itself: enabling the service
   appends `0 0 * * * /etc/init.d/acme renew` to `/etc/crontabs/root`.
-- The `Reload acme` handler **restarts the service, which triggers issuance**.
-  A configuration change therefore results in a conversation with the CA.
+- The `Reload acme` handler restarts the service, which enables the nightly
+  cron but does **not** issue anything — see the point above.
 - Install the client with the `apk` role (OpenWrt 24.10+); `acme-acmesh`
   provides the virtual name `acme`.
 

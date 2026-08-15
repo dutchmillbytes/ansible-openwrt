@@ -1,10 +1,9 @@
 ---
 # Reload acme service
 #
-# Note this is not a no-op reload: starting the acme service is what triggers
-# issuance and renewal, so a configuration change results in acme.sh talking
-# to the CA. That is the intent, but it is why this is a handler rather than
-# something run on every play.
+# Restarting registers the nightly renewal cron. It does NOT issue anything --
+# the service prints "Nightly certificate renewal enabled" and exits. Obtaining
+# a certificate is `/etc/init.d/acme renew`, handled by tasks/issue.yml.
 - name: Reload acme
   ansible.builtin.service:
     name: "acme"
