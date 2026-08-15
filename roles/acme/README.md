@@ -46,6 +46,7 @@ OpenWRT `acme` configuration
 | `acme_main_domain` | Domain this role waits for and serves; defaults to the first domain of the first cert | `optional` | `string` | |
 | `acme_uhttpd_enabled` | Point uhttpd at the issued certificate and reload it on renewal | `optional` | `boolean` | `false` |
 | `acme_uhttpd_section` | UCI section in `/etc/config/uhttpd` to update | `optional` | `string` | `main` |
+| `acme_uhttpd_redirect_https` | Force HTTPS: redirect plain-HTTP requests to TLS (`redirect_https`) | `optional` | `boolean` | `true` |
 
 ## Notes
 
@@ -64,6 +65,15 @@ OpenWRT `acme` configuration
 - Wiring uhttpd is **guarded on the certificate existing**. Pointing uhttpd at
   a missing file stops it serving HTTPS entirely, and on a device's first run
   the certificate does not exist until issuance completes.
+- **Forcing HTTPS is part of the same step.** `acme_uhttpd_redirect_https`
+  writes uhttpd's `redirect_https`, in the same commit that points uhttpd at
+  the certificate — so plain HTTP is only redirected once there is a valid
+  certificate to redirect it to. The role refuses to enable it when the uhttpd
+  section has no `listen_https`, since that combination redirects every request
+  to a closed port and takes the web UI away.
+- Forcing HTTPS does **not** break renewal. http-01 challenges are answered on
+  port 80 and ACME servers follow the redirect to HTTPS without verifying the
+  certificate presented on the way.
 - **Restarting the acme service does not issue anything.** It registers the
   nightly cron and prints "Nightly certificate renewal enabled". Obtaining a
   certificate needs `/etc/init.d/acme renew`, which returns immediately and

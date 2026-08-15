@@ -67,3 +67,15 @@ acme_uhttpd_domain: "{{ acme_main_domain }}"
 # client trusting only the root can still build a path.
 acme_uhttpd_cert: "/etc/ssl/acme/{{ acme_uhttpd_domain }}.fullchain.crt"
 acme_uhttpd_key: "/etc/ssl/acme/{{ acme_uhttpd_domain }}.key"
+
+# Force HTTPS -- uhttpd's `redirect_https`, which bounces every plain-HTTP
+# request to the same URL over TLS.
+#
+# On by default, because there is little point issuing a certificate, serving
+# it, and then leaving the web UI reachable in the clear. It only takes effect
+# once the certificate exists and uhttpd has actually been pointed at it, so
+# turning it on cannot strand a device on a self-signed certificate.
+#
+# The role owns this option: false writes `redirect_https='0'` rather than
+# leaving whatever is on the device.
+acme_uhttpd_redirect_https: true

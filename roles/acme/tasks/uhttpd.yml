@@ -1,5 +1,6 @@
 ---
-# Point uhttpd at an acme-issued certificate, and keep it reloaded on renewal.
+# Point uhttpd at an acme-issued certificate, force HTTPS, and keep uhttpd
+# reloaded on renewal.
 #
 # Deliberately guarded on the certificate already existing. Issuance runs in
 # the background after the service restart, so on a device's first run the
@@ -23,8 +24,42 @@
 - name: Configure uhttpd to use the acme certificate
   when: acme_uhttpd_cert_stat.stat.exists
   block:
+    # A redirect to a port nothing listens on takes the web UI away entirely,
+    # and on a device reached only over the network that is not recoverable
+    # without console access. Stock OpenWrt ships listen_https, but a hardened
+    # or hand-edited uhttpd may not have it, so check rather than assume.
+    - name: Check that uhttpd listens for HTTPS
+      ansible.builtin.command:
+        cmd: "uci -q get uhttpd.{{ acme_uhttpd_section }}.listen_https"
+      register: acme_uhttpd_listen
+      failed_when: false
+      changed_when: false
+      # Read-only, and must run under --check too -- otherwise it is skipped,
+      # the register is empty, and the assertion below fails for the wrong
+      # reason.
+      check_mode: false
+      when: acme_uhttpd_redirect_https | default(true) | bool
+
+    - name: Assert uhttpd has an HTTPS listener before forcing HTTPS
+      ansible.builtin.assert:
+        that: acme_uhttpd_listen.stdout | default('') | trim | length > 0
+        success_msg: "uhttpd listens for HTTPS on {{ acme_uhttpd_listen.stdout | default('') | trim }}"
+        fail_msg: >-
+          acme_uhttpd_redirect_https is on, but uhttpd.{{ acme_uhttpd_section }}
+          has no listen_https. Forcing HTTPS would redirect every request to a
+          port nothing is listening on and lock the web UI out. Add a listener
+          first (`uci add_list uhttpd.{{ acme_uhttpd_section }}.listen_https='0.0.0.0:443'`)
+          or set acme_uhttpd_redirect_https to false.
+      when: acme_uhttpd_redirect_https | default(true) | bool
+
     # fullchain, not the bare leaf: it carries the intermediate, so a client
     # that trusts only the root can still build a path.
+    #
+    # redirect_https is set in the same commit as the certificate, so HTTP is
+    # only forced to TLS at the moment uhttpd starts serving something valid.
+    # It does not break renewals: http-01 challenges are answered on port 80,
+    # and ACME servers follow the redirect to HTTPS without verifying the
+    # certificate they are offered on the way.
     - name: Point uhttpd at the acme certificate
       uci:
         command: "set"
@@ -34,6 +69,7 @@
         value:
           cert: "{{ acme_uhttpd_cert }}"
           key: "{{ acme_uhttpd_key }}"
+          redirect_https: "{{ '1' if acme_uhttpd_redirect_https | default(true) | bool else '0' }}"
       notify: Reload uhttpd
 
     - name: Commit uhttpd changes
