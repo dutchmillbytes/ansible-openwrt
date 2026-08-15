@@ -1,0 +1,57 @@
+---
+# Set state status for cert
+- name: Set state status for cert {{ item.id }}
+  ansible.builtin.set_fact:
+    acme_cert_state: "{{ item.state | default('present') }}"
+
+# Delete cert
+- name: Delete cert {{ item.id }}
+  when: "'absent' in acme_cert_state"
+  uci:
+    command: "absent"
+    config: "acme"
+    section: "{{ item.id }}"
+    type: "cert"
+
+# Create and configure cert
+- name: Create and configure cert
+  when: "'present' in acme_cert_state"
+  block:
+    # Create cert
+    - name: Create cert {{ item.id }}
+      uci:
+        command: "add"
+        config: "acme"
+        section: "{{ item.id }}"
+        type: "cert"
+
+    # Configure cert
+    #
+    # `domains` and `credentials` are UCI lists and are passed through as
+    # lists, not joined: the uci module writes an array as a real `list`, and
+    # `credentials` is read with config_list_foreach, which ignores an option.
+    - name: Configure cert {{ item.id }}
+      uci:
+        command: "set"
+        config: "acme"
+        section: "{{ item.id }}"
+        type: "cert"
+        value:
+          enabled: "{{ item.enabled | default(omit) }}"
+          domains: "{{ item.domains | default(omit) }}"
+          validation_method: "{{ item.validation_method | default(omit) }}"
+          webroot: "{{ item.webroot | default(omit) }}"
+          standalone: "{{ item.standalone | default(omit) }}"
+          listen_port: "{{ item.listen_port | default(omit) }}"
+          key_type: "{{ item.key_type | default(omit) }}"
+          keylength: "{{ item.keylength | default(omit) }}"
+          days: "{{ item.days | default(omit) }}"
+          acme_server: "{{ item.acme_server | default(omit) }}"
+          staging: "{{ item.staging | default(omit) }}"
+          use_staging: "{{ item.use_staging | default(omit) }}"
+          cert_profile: "{{ item.cert_profile | default(omit) }}"
+          calias: "{{ item.calias | default(omit) }}"
+          dalias: "{{ item.dalias | default(omit) }}"
+          dns: "{{ item.dns | default(omit) }}"
+          dns_wait: "{{ item.dns_wait | default(omit) }}"
+          credentials: "{{ item.credentials | default(omit) }}"

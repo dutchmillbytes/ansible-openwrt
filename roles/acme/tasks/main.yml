@@ -1,0 +1,17 @@
+---
+# Configure acme section
+- name: Configure acme section
+  ansible.builtin.include_tasks: acme.yml
+
+# Configure cert sections
+- name: Configure cert section
+  ansible.builtin.include_tasks: cert.yml
+  loop: "{{ acme_certs | default([]) }}"
+  loop_control:
+    label: "{{ item.id | default('unnamed') }}"
+
+# Apply changes and reload acme service
+- name: Apply changes and reload acme
+  uci:
+    command: commit
+  notify: Reload acme

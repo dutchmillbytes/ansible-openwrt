@@ -1,0 +1,37 @@
+---
+# acme section
+# Option names below are taken from the acme-common init script, not from the
+# OpenWrt wiki. In particular there is no `update_uhttpd` option -- wiring a
+# certificate into uhttpd is a separate concern.
+acme:
+  account_email: ""
+  debug: ""
+
+# cert sections
+#
+# Certificates are written to /etc/ssl/acme/ (CERT_DIR in the init script).
+# `state_dir` is deprecated and deliberately absent here.
+#
+# `domains` and `credentials` are UCI *lists* -- they are passed through as
+# lists, never joined into a string.
+acme_certs:
+  - id: ""
+    state: ""
+    enabled: ""
+    domains: []
+    validation_method: ""
+    webroot: ""
+    standalone: ""
+    listen_port: ""
+    key_type: ""
+    keylength: ""
+    days: ""
+    acme_server: ""
+    staging: ""
+    use_staging: ""
+    cert_profile: ""
+    calias: ""
+    dalias: ""
+    dns: ""
+    dns_wait: ""
+    credentials: []

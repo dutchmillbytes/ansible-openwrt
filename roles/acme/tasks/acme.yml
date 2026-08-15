@@ -1,0 +1,11 @@
+---
+# Configure acme settings
+- name: Configure acme settings
+  uci:
+    command: "set"
+    config: "acme"
+    section: "@acme[0]"
+    type: "acme"
+    value:
+      account_email: "{{ acme.account_email | default(omit) }}"
+      debug: "{{ acme.debug | default(omit) }}"
