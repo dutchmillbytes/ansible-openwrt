@@ -1,17 +1,15 @@
 ---
+# Install SSH authorized keys
+#
+# Before the dropbear settings, not after: if a settings change is going to
+# cost you access -- PasswordAuth off, Interface narrowed, Port moved -- the
+# keys should already be on the device when it takes effect.
+- name: Configure ssh authorized keys
+  ansible.builtin.include_tasks: keys.yml
+
 # Configure dropbear section
 - name: Configure dropbear section
   ansible.builtin.include_tasks: dropbear.yml
-
-# Copy SSH authorized keys
-- name: Copy ssh authorized keys
-  ansible.builtin.copy:
-    src: "authorized_keys"
-    dest: "/etc/dropbear/authorized_keys"
-    owner: "root"
-    group: "root"
-    mode: "0600"
-    force: true
 
 # Apply changes and reload dropbear service
 - name: Apply changes and reload dropbear

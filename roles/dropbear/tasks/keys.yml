@@ -1,0 +1,95 @@
+---
+# Install root's SSH public keys -- LuCI: System -> Administration -> "SSH-Keys".
+#
+# This used to be an unconditional `copy` of the role's files/authorized_keys
+# with force: true. That file ships EMPTY, so any play including this role
+# truncated /etc/dropbear/authorized_keys on every device it touched, breaking
+# key-based SSH -- i.e. breaking Ansible's own way back in. Nothing in the task
+# said so, and --check reported it as an ordinary diff.
+#
+# So: keys come from a variable, the shipped file is only a second source, and
+# an empty result means "not managed here" rather than "delete everything".
+
+- name: Read SSH public keys from the role files
+  ansible.builtin.set_fact:
+    dropbear_keys_from_file: >-
+      {{ (lookup('file', dropbear_authorized_keys_src, errors='ignore') | default('', true)).splitlines()
+         if (dropbear_authorized_keys_src | default('') | length > 0)
+         else [] }}
+
+- name: Collect the configured SSH public keys
+  ansible.builtin.set_fact:
+    dropbear_keys: >-
+      {{ ((dropbear_authorized_keys | default([])) + dropbear_keys_from_file)
+         | map('trim') | reject('match', '^([#]|$)') | unique | list }}
+
+# The point of the guard. Said out loud rather than skipped silently, because
+# "ran, keys unmanaged" and "ran, keys correct" otherwise look identical in the
+# play output.
+- name: Report that authorized_keys is left unmanaged
+  ansible.builtin.debug:
+    msg: >-
+      No keys configured in dropbear_authorized_keys or
+      {{ dropbear_authorized_keys_src | default('files/authorized_keys') }}, so
+      {{ dropbear_authorized_keys_path }} is left exactly as it is. Populate
+      dropbear_authorized_keys to manage it.
+  when: dropbear_keys | length == 0
+
+- name: Manage authorized_keys
+  when: dropbear_keys | length > 0
+  block:
+    # Catches the two mistakes that cost you access: a private key pasted in by
+    # accident, and a path or filename where a key was meant to go. `search`
+    # rather than `match`, because an authorized_keys line may carry an options
+    # prefix (`restrict,command="..." ssh-ed25519 AAAA...`).
+    - name: Validate the SSH public keys
+      ansible.builtin.assert:
+        that:
+          - item is search('(ssh-(rsa|dss|ed25519)|ecdsa-sha2-|sk-ssh-|sk-ecdsa-)')
+          - item is not search('PRIVATE KEY')
+        fail_msg: >-
+          Not an SSH public key: "{{ item | truncate(60) }}". Expected a line
+          like `ssh-ed25519 AAAAC3Nza... user@host`.
+      loop: "{{ dropbear_keys }}"
+      loop_control:
+        label: "{{ item.split(' ') | last }}"
+
+    # Non-exclusive mode keeps whatever is already on the device, so it has to
+    # know what that is. Read it here rather than merge with a shell redirect:
+    # a key comment can contain quotes, and nesting those inside `sh -c '...'`
+    # is how you end up appending something that is not a key.
+    - name: Read the deployed authorized_keys
+      ansible.builtin.command:
+        cmd: "cat {{ dropbear_authorized_keys_path }}"
+      register: dropbear_deployed
+      # A device that has never had the file is not an error, it is the case
+      # this role exists to fix.
+      failed_when: false
+      changed_when: false
+      # Read-only, and must run under --check too -- otherwise the register is
+      # empty and the merge below silently drops every deployed key.
+      check_mode: false
+      when: not dropbear_authorized_keys_exclusive | default(true) | bool
+
+    # Exclusive: exactly the configured keys, so dropping one from the list
+    # drops it from the device -- including anything added out of band. That is
+    # the point, but it does mean the list must contain the key this play is
+    # connecting with.
+    #
+    # Non-exclusive: deployed lines first, verbatim (comments and all), then
+    # whatever is missing appended. Comparison is on the trimmed line, so
+    # trailing whitespace does not re-append a key that is already there.
+    - name: Install authorized_keys
+      ansible.builtin.copy:
+        content: "{{ dropbear_keys_wanted | join('\n') }}\n"
+        dest: "{{ dropbear_authorized_keys_path }}"
+        owner: "root"
+        group: "root"
+        mode: "0600"
+      vars:
+        dropbear_deployed_lines: "{{ (dropbear_deployed.stdout | default('')).splitlines() }}"
+        dropbear_keys_wanted: >-
+          {{ dropbear_keys
+             if dropbear_authorized_keys_exclusive | default(true) | bool
+             else (dropbear_deployed_lines
+                   + (dropbear_keys | reject('in', dropbear_deployed_lines | map('trim') | list) | list)) }}

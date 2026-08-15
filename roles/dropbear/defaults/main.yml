@@ -16,3 +16,26 @@ dropbear:
   mdns: ""
   MaxAuthTries: ""
   RecvWindowSize: ""
+
+# SSH public keys for root -- LuCI: System -> Administration -> "SSH-Keys".
+#
+# One entry per key, exactly as it appears in an authorized_keys file (an
+# `option="value"` prefix is allowed). Empty by default, and while it is empty
+# the role does not touch the file on the device at all: an empty list means
+# "not managed here", never "remove every key". Getting that wrong locks
+# Ansible itself out of the device.
+dropbear_authorized_keys: []
+
+# Optional second source: a file in this role's `files/` directory. Keys from
+# it are merged with the list above; blank lines and `#` comments are dropped.
+# Set to "" to ignore the file entirely.
+dropbear_authorized_keys_src: "authorized_keys"
+
+# Where the merged keys are written.
+dropbear_authorized_keys_path: "/etc/dropbear/authorized_keys"
+
+# true  -- the file ends up as exactly the configured keys, so deleting a key
+#          from the list removes it from the device
+# false -- missing keys are appended and anything already on the device is
+#          left alone
+dropbear_authorized_keys_exclusive: true

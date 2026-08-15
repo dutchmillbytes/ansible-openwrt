@@ -1,0 +1,9 @@
+# Optional second source of SSH public keys for the dropbear role. One public
+# key per line; blank lines and `#` comments are ignored.
+#
+# Prefer the `dropbear_authorized_keys` variable: anything committed here
+# applies to every device the role is run against, in every inventory.
+#
+# Leaving this file empty is safe. The role writes
+# /etc/dropbear/authorized_keys only when at least one key is configured
+# somewhere -- an empty result means "not managed", not "remove every key".
