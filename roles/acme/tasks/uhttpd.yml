@@ -1,0 +1,52 @@
+---
+# Point uhttpd at an acme-issued certificate, and keep it reloaded on renewal.
+#
+# Deliberately guarded on the certificate already existing. Issuance runs in
+# the background after the service restart, so on a device's first run the
+# files are not there yet -- and pointing uhttpd at a missing certificate stops
+# it serving HTTPS at all. The guard means the first run configures acme, and
+# a later run wires uhttpd up once there is something to wire.
+
+- name: Check whether the certificate has been issued
+  ansible.builtin.stat:
+    path: "{{ acme_uhttpd_cert }}"
+  register: acme_uhttpd_cert_stat
+
+- name: Report that uhttpd wiring is deferred
+  ansible.builtin.debug:
+    msg: >-
+      {{ acme_uhttpd_cert }} does not exist yet, so uhttpd is left alone.
+      Issuance runs in the background; re-run this play once it has completed
+      to point uhttpd at the certificate.
+  when: not acme_uhttpd_cert_stat.stat.exists
+
+- name: Configure uhttpd to use the acme certificate
+  when: acme_uhttpd_cert_stat.stat.exists
+  block:
+    # fullchain, not the bare leaf: it carries the intermediate, so a client
+    # that trusts only the root can still build a path.
+    - name: Point uhttpd at the acme certificate
+      uci:
+        command: "set"
+        config: "uhttpd"
+        section: "{{ acme_uhttpd_section }}"
+        type: "uhttpd"
+        value:
+          cert: "{{ acme_uhttpd_cert }}"
+          key: "{{ acme_uhttpd_key }}"
+      notify: Reload uhttpd
+
+    - name: Commit uhttpd changes
+      uci:
+        command: "commit"
+      notify: Reload uhttpd
+
+# acme-common runs `hotplug-call acme` on issuance and renewal. Without a hook
+# uhttpd would keep serving the old certificate after every renewal.
+- name: Install the uhttpd reload hook
+  ansible.builtin.copy:
+    src: "50-uhttpd"
+    dest: "/etc/hotplug.d/acme/50-uhttpd"
+    owner: "root"
+    group: "root"
+    mode: "0755"

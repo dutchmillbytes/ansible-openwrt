@@ -1,0 +1,12 @@
+#!/bin/sh
+# Reload uhttpd when acme issues or renews a certificate.
+#
+# Installed by the flyoverhead.openwrt.acme role. acme-common runs
+# `hotplug-call acme` with ACTION set to the event name, so this fires for
+# every issuance and renewal. Without it uhttpd keeps serving the previous
+# certificate until something else restarts it -- which, on a device that is
+# only ever reconfigured by Ansible, could be months.
+
+[ "$ACTION" = "issued" ] || [ "$ACTION" = "renewed" ] || exit 0
+
+/etc/init.d/uhttpd reload

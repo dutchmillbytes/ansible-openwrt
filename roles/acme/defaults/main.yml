@@ -35,3 +35,35 @@ acme_certs:
     dns: ""
     dns_wait: ""
     credentials: []
+
+# Obtain certificates during the play rather than waiting for the nightly
+# cron. Restarting the acme service only registers the cron entry; it does not
+# issue anything.
+acme_issue_now: true
+
+# Seconds to wait for issuance to complete before failing.
+acme_issue_timeout: 120
+
+# Main domain of the certificate this role should wait for and serve. Defaults
+# to the first domain of the first cert section.
+acme_main_domain: "{{ (acme_certs | default([]) | selectattr('domains', 'defined') | map(attribute='domains') | first | default([]))[0] | default('') }}"
+
+acme_issue_cert_path: "/etc/ssl/acme/{{ acme_main_domain }}.fullchain.crt"
+
+# uhttpd integration
+#
+# Off by default. When enabled, uhttpd is pointed at the issued certificate and
+# a hotplug hook is installed so it reloads on every renewal. There is no
+# `update_uhttpd` option in the acme package itself -- this is the role's own.
+acme_uhttpd_enabled: false
+
+# UCI section in /etc/config/uhttpd to update.
+acme_uhttpd_section: "main"
+
+# Main domain of the certificate to serve.
+acme_uhttpd_domain: "{{ acme_main_domain }}"
+
+# fullchain rather than the bare leaf: it includes the intermediate, so a
+# client trusting only the root can still build a path.
+acme_uhttpd_cert: "/etc/ssl/acme/{{ acme_uhttpd_domain }}.fullchain.crt"
+acme_uhttpd_key: "/etc/ssl/acme/{{ acme_uhttpd_domain }}.key"

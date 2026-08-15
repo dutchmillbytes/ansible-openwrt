@@ -10,3 +10,9 @@
     name: "acme"
     state: "restarted"
     enabled: true
+
+# Reload uhttpd service
+- name: Reload uhttpd
+  ansible.builtin.service:
+    name: "uhttpd"
+    state: "reloaded"

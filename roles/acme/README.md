@@ -37,14 +37,37 @@ OpenWRT `acme` configuration
 > not join them into a string. `credentials` is read with
 > `config_list_foreach`, which ignores an `option` outright.
 
+### uhttpd integration
+
+| Variable | Descritpion | Status | Type | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| `acme_issue_now` | Obtain certificates during the play instead of waiting for the nightly cron | `optional` | `boolean` | `true` |
+| `acme_issue_timeout` | Seconds to wait for issuance before failing | `optional` | `integer` | `120` |
+| `acme_main_domain` | Domain this role waits for and serves; defaults to the first domain of the first cert | `optional` | `string` | |
+| `acme_uhttpd_enabled` | Point uhttpd at the issued certificate and reload it on renewal | `optional` | `boolean` | `false` |
+| `acme_uhttpd_section` | UCI section in `/etc/config/uhttpd` to update | `optional` | `string` | `main` |
+
 ## Notes
 
 - Certificates are written to **`/etc/ssl/acme/`**. The `state_dir` option is
   deprecated and is not exposed by this role.
 - There is **no `update_uhttpd` option** in this package, despite what some
-  documentation suggests. Pointing uhttpd (or any other service) at the issued
-  files is a separate step, as is reloading it after renewal — see
-  `/usr/lib/acme/hook/`.
+  documentation suggests. `acme_uhttpd_enabled` is this role's own
+  implementation of it: it points uhttpd at the issued certificate and installs
+  `/etc/hotplug.d/acme/50-uhttpd` so uhttpd reloads on every renewal.
+- **`/usr/lib/acme/hook` is a file, not a directory.** The extension point is
+  hotplug: `/usr/lib/acme/notify` runs `hotplug-call acme` with `ACTION` set to
+  `issued` or `renewed`, so scripts belong in `/etc/hotplug.d/acme/`.
+- uhttpd is pointed at **`.fullchain.crt`**, not `.crt`. The latter is the leaf
+  alone; the fullchain carries the intermediate, so a client that trusts only
+  the root can still build a path.
+- Wiring uhttpd is **guarded on the certificate existing**. Pointing uhttpd at
+  a missing file stops it serving HTTPS entirely, and on a device's first run
+  the certificate does not exist until issuance completes.
+- **Restarting the acme service does not issue anything.** It registers the
+  nightly cron and prints "Nightly certificate renewal enabled". Obtaining a
+  certificate needs `/etc/init.d/acme renew`, which returns immediately and
+  works in the background — hence `acme_issue_now` and its wait loop.
 - Renewal scheduling is handled by the package itself: enabling the service
   appends `0 0 * * * /etc/init.d/acme renew` to `/etc/crontabs/root`.
 - The `Reload acme` handler **restarts the service, which triggers issuance**.
