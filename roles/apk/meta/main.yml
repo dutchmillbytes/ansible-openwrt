@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: flyoverhead
+  description: Install and remove packages with apk (OpenWrt 24.10+)
+  license: GPL-3.0
+  min_ansible_version: "2.13"
+  platforms:
+    - name: OpenWrt
+      versions: ["24.10", "25.12"]
+  galaxy_tags: ["openwrt", "apk", "packages"]
+dependencies:
+  - role: gekmihesg.openwrt

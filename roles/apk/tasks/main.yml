@@ -1,0 +1,10 @@
+---
+# Install packages
+- name: Install packages
+  ansible.builtin.include_tasks: install.yml
+  when: apk_packages | default([]) | length > 0
+
+# Remove packages
+- name: Remove packages
+  ansible.builtin.include_tasks: remove.yml
+  when: apk_packages_absent | default([]) | length > 0
